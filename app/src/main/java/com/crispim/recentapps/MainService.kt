@@ -15,7 +15,6 @@ class MainService : AccessibilityService() {
 
     private val SCAN_CODE_VOLUME_UP = 114
     private var pendingVolumeUpRunnable: Runnable? = null
-    private val clickDelay = 300L
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -46,6 +45,8 @@ class MainService : AccessibilityService() {
                     adjustVolume()
                     pendingVolumeUpRunnable = null
                 }
+                val prefs = getSharedPreferences("RecentAppsPrefs", Context.MODE_PRIVATE)
+                val clickDelay = prefs.getInt("CLICK_DELAY_MS", 300).toLong()
                 handler.postDelayed(pendingVolumeUpRunnable!!, clickDelay)
                 return true
             }
