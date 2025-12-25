@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -49,7 +50,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -102,8 +102,8 @@ class MainActivity : ComponentActivity() {
         }
         var clickDelay by remember {
             mutableStateOf(
-                context.getSharedPreferences("RecentAppsPrefs", Context.MODE_PRIVATE)
-                    .getInt("CLICK_DELAY_MS", 300).toFloat()
+                context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY).toFloat()
             )
         }
 
@@ -130,29 +130,42 @@ class MainActivity : ComponentActivity() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f), shape = RoundedCornerShape(24.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.ScreenRotation,
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(16.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ScreenRotation,
+                        contentDescription = "Logo",
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "RecentApps",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
-            
-            Text(
-                text = "RecentApps",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+
+            val allPermissionsGranted = hasOverlayPermission && hasAccessibilityPermission
+            if (!allPermissionsGranted) {
+                WarningCard(
+                    title = "Warning",
+                    message = "For the app to function correctly, please grant the required permissions."
                 )
-            )
+            }
 
             // GoodLock Warning
             WarningCard(
@@ -168,9 +181,9 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 val intent = Intent(
                                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    "package:$packageName".toUri()
+                                    "package:${context.packageName}".toUri()
                                 )
-                                startActivity(intent)
+                                context.startActivity(intent)
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -180,57 +193,75 @@ class MainActivity : ComponentActivity() {
                             text = "Enable Accessibility Service",
                             onClick = {
                                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                startActivity(intent)
+                                context.startActivity(intent)
                             }
                         )
                     }
                 }
             }
 
-            InfoCard(title = "Settings") {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Service Status",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = if (hasAccessibilityPermission) "Service is ready" else "Service needs permission",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-
-                    SettingDivider()
-
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            if (allPermissionsGranted) {
+                InfoCard(title = "Settings") {
+                    Column {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
-                        ){
-                            Text("Double-Press Delay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("${clickDelay.toInt()} ms", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        }
-                        Slider(
-                            value = clickDelay,
-                            onValueChange = { clickDelay = it },
-                            valueRange = 100f..700f,
-                            steps = 5,
-                            onValueChangeFinished = {
-                                context.getSharedPreferences("RecentAppsPrefs", Context.MODE_PRIVATE)
-                                    .edit { putInt("CLICK_DELAY_MS", clickDelay.toInt()) }
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Service Status",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = if (hasAccessibilityPermission) "Service is ready! On external screen double press volume up to open recent apps" else "Service needs permission",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
                             }
-                        )
+                        }
+
+                        SettingDivider()
+
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Double-Press Delay",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "${clickDelay.toInt()} ms",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Slider(
+                                value = clickDelay,
+                                onValueChange = { clickDelay = it },
+                                valueRange = 200f..400f,
+                                steps = 3,
+                                onValueChangeFinished = {
+                                    context.getSharedPreferences(
+                                        AppConstants.PREFS_NAME,
+                                        Context.MODE_PRIVATE
+                                    )
+                                        .edit {
+                                            putInt(
+                                                AppConstants.KEY_CLICK_DELAY,
+                                                clickDelay.toInt()
+                                            )
+                                        }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -247,6 +278,20 @@ class MainActivity : ComponentActivity() {
                 shape = RoundedCornerShape(16.dp),
             ) {
                 Text(text = "Buy me an Ice Cream ($1)")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val url = "https://github.com/crispim1411/RecentApps/issues"
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Text(text = "A Bug? Report it!")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

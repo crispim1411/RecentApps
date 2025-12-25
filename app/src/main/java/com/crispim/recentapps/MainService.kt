@@ -13,7 +13,7 @@ import android.view.accessibility.AccessibilityEvent
 @SuppressLint("AccessibilityPolicy")
 class MainService : AccessibilityService() {
 
-    private val SCAN_CODE_VOLUME_UP = 114
+
     private var pendingVolumeUpRunnable: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -23,17 +23,17 @@ class MainService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val displayManager = getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
         val mainDisplay = displayManager.getDisplay(0)
-        if (mainDisplay?.state == android.view.Display.STATE_ON) {
+        if (mainDisplay?.state == android.view.Display.STATE_ON || event.scanCode != AppConstants.SCAN_CODE_VOLUME_UP) {
             return super.onKeyEvent(event)
         }
 
         val action = event.action
 
-        if (event.scanCode == SCAN_CODE_VOLUME_UP && action == KeyEvent.ACTION_UP) {
+        if (action == KeyEvent.ACTION_DOWN) {
             return true
         }
 
-        if (event.scanCode == SCAN_CODE_VOLUME_UP && action == KeyEvent.ACTION_DOWN) {
+        if (action == KeyEvent.ACTION_UP) {
             if (pendingVolumeUpRunnable != null) {
                 handler.removeCallbacks(pendingVolumeUpRunnable!!)
                 pendingVolumeUpRunnable = null
@@ -41,12 +41,13 @@ class MainService : AccessibilityService() {
                 return true
             }
             else {
+                //aqui então?
                 pendingVolumeUpRunnable = Runnable {
                     adjustVolume()
                     pendingVolumeUpRunnable = null
                 }
-                val prefs = getSharedPreferences("RecentAppsPrefs", Context.MODE_PRIVATE)
-                val clickDelay = prefs.getInt("CLICK_DELAY_MS", 300).toLong()
+                val prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                val clickDelay = prefs.getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY).toLong()
                 handler.postDelayed(pendingVolumeUpRunnable!!, clickDelay)
                 return true
             }
