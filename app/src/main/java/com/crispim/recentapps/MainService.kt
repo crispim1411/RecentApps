@@ -4,15 +4,14 @@ import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import com.crispim.coverspin.showToast
 
 @SuppressLint("AccessibilityPolicy")
 class MainService : AccessibilityService() {
-
 
     private var pendingVolumeUpRunnable: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -21,75 +20,62 @@ class MainService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
-        val mainDisplay = displayManager.getDisplay(0)
-        if (mainDisplay?.state == android.view.Display.STATE_ON || event.scanCode != AppConstants.SCAN_CODE_VOLUME_UP) {
-            return super.onKeyEvent(event)
-        }
+        try {
+            val displayManager =
+                getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager
+            val mainDisplay = displayManager.getDisplay(0)
 
-        val action = event.action
-
-        if (action == KeyEvent.ACTION_DOWN) {
-            return true
-        }
-
-        if (action == KeyEvent.ACTION_UP) {
-            if (pendingVolumeUpRunnable != null) {
-                handler.removeCallbacks(pendingVolumeUpRunnable!!)
-                pendingVolumeUpRunnable = null
-                openRecentApps()
-                return true
+            if (event.action == KeyEvent.ACTION_DOWN
+                || event.scanCode != AppConstants.SCAN_CODE_VOLUME_UP
+                || mainDisplay?.state == android.view.Display.STATE_ON
+            ) {
+                return super.onKeyEvent(event)
             }
-            else {
-                //aqui então?
-                pendingVolumeUpRunnable = Runnable {
-                    adjustVolume()
+
+            if (event.action == KeyEvent.ACTION_UP) {
+                if (pendingVolumeUpRunnable != null) {
+                    handler.removeCallbacks(pendingVolumeUpRunnable!!)
                     pendingVolumeUpRunnable = null
+                    openRecentApps()
+                    return true
+                } else {
+                    pendingVolumeUpRunnable = Runnable {
+                        pendingVolumeUpRunnable = null
+                    }
+                    val prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                    val clickDelay =
+                        prefs.getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY)
+                            .toLong()
+                    handler.postDelayed(pendingVolumeUpRunnable!!, clickDelay)
                 }
-                val prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE)
-                val clickDelay = prefs.getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY).toLong()
-                handler.postDelayed(pendingVolumeUpRunnable!!, clickDelay)
-                return true
             }
+        } catch (e: Exception) {
+            showToast(this, "onKeyEvent Error: ${e.message}")
         }
 
         return super.onKeyEvent(event)
     }
 
-    private fun adjustVolume() {
-        try {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            audioManager.adjustStreamVolume(
-                AudioManager.STREAM_MUSIC,
-                AudioManager.ADJUST_RAISE,
-                AudioManager.FLAG_SHOW_UI // Mostra a barra de volume na tela
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     private fun openRecentApps() {
         try {
-            val samsungIntent = Intent()
-            samsungIntent.component = android.content.ComponentName(
-                "com.sec.android.app.launcher",
-                "com.android.quickstep.RecentsActivity"
+            val recentAppsIntent = Intent()
+            recentAppsIntent.component = android.content.ComponentName(
+                AppConstants.SAMSUNG_LAUNCHER_PACKAGE,
+                AppConstants.RECENTS_ACTIVITY_CLASS
             )
-            samsungIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            samsungIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED) // Tenta forçar reinício
+            recentAppsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            recentAppsIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
 
             val options = android.app.ActivityOptions.makeBasic()
-            val displayManager = getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
+            val displayManager = getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager
             val targetDisplay = displayManager.getDisplay(1)
 
             if (targetDisplay != null) {
                 options.launchDisplayId = targetDisplay.displayId
-                startActivity(samsungIntent, options.toBundle())
-                return
+                startActivity(recentAppsIntent, options.toBundle())
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            showToast(this, "onKeyEvent Error: ${e.message}")
         }
     }
 }

@@ -40,6 +40,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,35 +56,40 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import com.crispim.coverspin.showToast
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        val primaryColor = Color(0xFF0D47A1)
-        val secondaryColor = Color(0xFF90CAF9)
-        val backgroundColor = Color(0xFFE3F2FD)
-        val surfaceColor = Color.White
+        try {
+            super.onCreate(savedInstanceState)
 
-        val customColorScheme = lightColorScheme(
-            primary = primaryColor,
-            onPrimary = Color.White,
-            secondary = secondaryColor,
-            onSecondary = Color.Black,
-            background = backgroundColor,
-            surface = surfaceColor,
-            onSurface = Color.Black
-        )
+            val primaryColor = Color(0xFF0D47A1)
+            val secondaryColor = Color(0xFF90CAF9)
+            val backgroundColor = Color(0xFFE3F2FD)
+            val surfaceColor = Color.White
 
-        setContent {
-            MaterialTheme(colorScheme = customColorScheme) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    SettingsScreen()
+            val customColorScheme = lightColorScheme(
+                primary = primaryColor,
+                onPrimary = Color.White,
+                secondary = secondaryColor,
+                onSecondary = Color.Black,
+                background = backgroundColor,
+                surface = surfaceColor,
+                onSurface = Color.Black
+            )
+
+            setContent {
+                MaterialTheme(colorScheme = customColorScheme) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        SettingsScreen()
+                    }
                 }
             }
+        } catch (e: Exception) {
+            showToast(this, "onKeyEvent Error: ${e.message}")
         }
     }
 
@@ -91,28 +97,24 @@ class MainActivity : ComponentActivity() {
     fun SettingsScreen() {
         val context = LocalContext.current
 
-        val displayManager = remember { context.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager }
-        
         var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
-        var isInnerScreen by remember {
-            mutableStateOf(displayManager.getDisplay(0)?.state == android.view.Display.STATE_ON) 
-        }
         var hasAccessibilityPermission by remember {
             mutableStateOf(isAccessibilityServiceEnabled(context, MainService::class.java))
         }
         var clickDelay by remember {
-            mutableStateOf(
-                context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE)
-                    .getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY).toFloat()
+            mutableFloatStateOf(
+                context.getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE)
+                    .getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY)
+                    .toFloat()
             )
         }
 
         DisposableEffect(context as LifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
-                    isInnerScreen = displayManager.getDisplay(0)?.state == android.view.Display.STATE_ON
                     hasOverlayPermission = Settings.canDrawOverlays(context)
-                    hasAccessibilityPermission = isAccessibilityServiceEnabled(context, MainService::class.java)
+                    hasAccessibilityPermission =
+                        isAccessibilityServiceEnabled(context, MainService::class.java)
                 }
             }
             context.lifecycle.addObserver(observer)
@@ -129,7 +131,7 @@ class MainActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            
+
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -251,7 +253,7 @@ class MainActivity : ComponentActivity() {
                                 onValueChangeFinished = {
                                     context.getSharedPreferences(
                                         AppConstants.PREFS_NAME,
-                                        Context.MODE_PRIVATE
+                                        MODE_PRIVATE
                                     )
                                         .edit {
                                             putInt(
@@ -373,7 +375,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun isAccessibilityServiceEnabled(context: Context, service: Class<*>): Boolean {
-        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
         val enabledServices = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
