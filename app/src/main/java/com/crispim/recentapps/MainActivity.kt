@@ -102,8 +102,8 @@ class MainActivity : ComponentActivity() {
         }
         var clickDelay by remember {
             mutableFloatStateOf(
-                context.getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE)
-                    .getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY)
+                context.getSharedPreferences(Constants.PREFS_NAME, MODE_PRIVATE)
+                    .getInt(Constants.KEY_CLICK_DELAY, Constants.DEFAULT_CLICK_DELAY)
                     .toFloat()
             )
         }
@@ -251,12 +251,12 @@ class MainActivity : ComponentActivity() {
                                 steps = 3,
                                 onValueChangeFinished = {
                                     context.getSharedPreferences(
-                                        AppConstants.PREFS_NAME,
+                                        Constants.PREFS_NAME,
                                         MODE_PRIVATE
                                     )
                                         .edit {
                                             putInt(
-                                                AppConstants.KEY_CLICK_DELAY,
+                                                Constants.KEY_CLICK_DELAY,
                                                 clickDelay.toInt()
                                             )
                                         }

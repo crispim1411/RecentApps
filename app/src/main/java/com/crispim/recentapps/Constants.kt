@@ -1,6 +1,6 @@
 package com.crispim.recentapps
 
-object AppConstants {
+object Constants {
     // SharedPreferences
     const val PREFS_NAME = "RecentAppsPrefs"
     const val KEY_CLICK_DELAY = "CLICK_DELAY_MS"

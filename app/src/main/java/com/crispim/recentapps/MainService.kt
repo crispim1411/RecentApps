@@ -31,7 +31,7 @@ class MainService : AccessibilityService() {
             val displayManager =
                 getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager
             val mainDisplay = displayManager.getDisplay(0)
-            if (event.scanCode != AppConstants.SCAN_CODE_VOLUME_UP
+            if (event.scanCode != Constants.SCAN_CODE_VOLUME_UP
                 || event.action == KeyEvent.ACTION_DOWN
                 || mainDisplay?.state == android.view.Display.STATE_ON) {
                 return super.onKeyEvent(event)
@@ -50,9 +50,9 @@ class MainService : AccessibilityService() {
                         pendingVolumeUpRunnable = null
                         hasVolumeRaised = false
                     }
-                    val prefs = getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE)
+                    val prefs = getSharedPreferences(Constants.PREFS_NAME, MODE_PRIVATE)
                     val clickDelay =
-                        prefs.getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY)
+                        prefs.getInt(Constants.KEY_CLICK_DELAY, Constants.DEFAULT_CLICK_DELAY)
                             .toLong()
                     handler.postDelayed(pendingVolumeUpRunnable!!, clickDelay)
                 }
@@ -68,8 +68,8 @@ class MainService : AccessibilityService() {
         try {
             val recentAppsIntent = Intent()
             recentAppsIntent.component = android.content.ComponentName(
-                AppConstants.SAMSUNG_LAUNCHER_PACKAGE,
-                AppConstants.RECENTS_ACTIVITY_CLASS
+                Constants.SAMSUNG_LAUNCHER_PACKAGE,
+                Constants.RECENTS_ACTIVITY_CLASS
             )
             recentAppsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             recentAppsIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
