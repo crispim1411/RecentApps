@@ -1,17 +1,23 @@
-package com.crispim.coverspin
+package com.crispim.recentapps
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
+import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Gravity
 import android.view.WindowManager
+import android.widget.TextView
 
 private val toastHandler = Handler(Looper.getMainLooper())
 
 fun showToast(context: Context, msg: String) {
     toastHandler.post {
         try {
-            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
+            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
             val targetDisplay = displayManager.getDisplay(1) ?: displayManager.getDisplay(0) ?: return@post
 
             val displayContext = context.createDisplayContext(targetDisplay)
@@ -23,18 +29,18 @@ fun showToast(context: Context, msg: String) {
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                android.graphics.PixelFormat.TRANSLUCENT
+                PixelFormat.TRANSLUCENT
             )
-            params.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+            params.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             params.y = 100
 
-            val textView = android.widget.TextView(displayContext)
+            val textView = TextView(displayContext)
             textView.text = msg
-            textView.setTextColor(android.graphics.Color.WHITE)
+            textView.setTextColor(Color.WHITE)
             textView.textSize = 14f
             textView.setPadding(40, 20, 40, 20)
 
-            val background = android.graphics.drawable.GradientDrawable()
+            val background = GradientDrawable()
             background.setColor(0xCC000000.toInt())
             background.cornerRadius = 50f
             textView.background = background

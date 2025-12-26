@@ -2,19 +2,26 @@ package com.crispim.recentapps
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
-import com.crispim.coverspin.showToast
 
 @SuppressLint("AccessibilityPolicy")
 class MainService : AccessibilityService() {
 
     private var pendingVolumeUpRunnable: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
+
+    private lateinit var audioManager: AudioManager
+    private var hasVolumeRaised: Boolean = false
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
@@ -24,11 +31,9 @@ class MainService : AccessibilityService() {
             val displayManager =
                 getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager
             val mainDisplay = displayManager.getDisplay(0)
-
-            if (event.action == KeyEvent.ACTION_DOWN
-                || event.scanCode != AppConstants.SCAN_CODE_VOLUME_UP
-                || mainDisplay?.state == android.view.Display.STATE_ON
-            ) {
+            if (event.scanCode != AppConstants.SCAN_CODE_VOLUME_UP
+                || event.action == KeyEvent.ACTION_DOWN
+                || mainDisplay?.state == android.view.Display.STATE_ON) {
                 return super.onKeyEvent(event)
             }
 
@@ -36,13 +41,16 @@ class MainService : AccessibilityService() {
                 if (pendingVolumeUpRunnable != null) {
                     handler.removeCallbacks(pendingVolumeUpRunnable!!)
                     pendingVolumeUpRunnable = null
+                    restoreVolume()
                     openRecentApps()
                     return true
                 } else {
+                    hasVolumeRaised = true
                     pendingVolumeUpRunnable = Runnable {
                         pendingVolumeUpRunnable = null
+                        hasVolumeRaised = false
                     }
-                    val prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                    val prefs = getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE)
                     val clickDelay =
                         prefs.getInt(AppConstants.KEY_CLICK_DELAY, AppConstants.DEFAULT_CLICK_DELAY)
                             .toLong()
@@ -76,6 +84,23 @@ class MainService : AccessibilityService() {
             }
         } catch (e: Exception) {
             showToast(this, "onKeyEvent Error: ${e.message}")
+        }
+    }
+
+    private fun restoreVolume() {
+        if (hasVolumeRaised) {
+            try {
+                val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                audioManager.setStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    currentVolume-2,
+                    0
+                )
+            } catch (e: Exception) {
+                showToast(this, "Failed to restore volume: ${e.message}")
+            } finally {
+                hasVolumeRaised = false
+            }
         }
     }
 }
