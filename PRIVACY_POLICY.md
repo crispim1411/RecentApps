@@ -2,7 +2,7 @@
 
 Welcome to the RecentApps app for Android!
 
-This is a utility app designed to provide custom shortcuts on the cover screens of foldable devices. As the developer, I take your privacy very seriously. I have not programmed this app to collect any personally identifiable information.
+This is a utility app designed to add custom shortcuts to your device. As the developer, I take your privacy very seriously. I have not programmed this app to collect any personally identifiable information.
 
 ### Data collected by the app
 
@@ -14,13 +14,7 @@ The list of permissions required by the app can be found in the `AndroidManifest
 
 | Permission | Why it is required |
 | :---: | --- |
-| `android.permission.SYSTEM_ALERT_WINDOW` | This permission is required to allow the app to launch other application windows on the external (cover) screen, which is considered a non-standard display that requires special management. |
-| `android.permission.BIND_ACCESSIBILITY_SERVICE` | This permission is required for the volume button shortcuts feature. The Accessibility Service listens for `KeyEvent`s from the physical volume buttons to detect single and double presses. **The service does not monitor, log, or store any text you type or any other content on your screen.** Its sole purpose is to provide shortcuts from the cover screen. The app declares itself to the Android system as not being a primary accessibility tool (`isAccessibilityTool=\"false\"`). |
-| `android.permission.FOREGROUND_SERVICE` & `android.permission.FOREGROUND_SERVICE_SPECIAL_USE` | These permissions allow RecentApps' key-listening service to run reliably in the background. This is necessary for the app to function when the cover screen is active and the main configuration app is not visible. |
-
-### Explanation of App Queries
-
-The app also declares its intent to query for other installed packages, specifically `com.google.android.inputmethod.latin` (Gboard). This is necessary to get the correct Intent to launch Gboard on the external display as part of the shortcut functionality. No data is collected or stored about other installed apps on your device.
+| `android.permission.BIND_ACCESSIBILITY_SERVICE` | This is the core permission that enables all of the app's features. The Accessibility Service is used in two ways: 1) It listens for `KeyEvent`s from the physical volume buttons to detect double-presses. 2) It listens for `AccessibilityEvent`s of type `TYPE_VIEW_LONG_CLICKED` to detect when the Home button is long-pressed. **The service does not monitor, log, or store any text you type, your notifications, or any other content on your screen.** Its sole purpose is to provide shortcuts. |
 
 <hr style="border:1px solid gray">
 
