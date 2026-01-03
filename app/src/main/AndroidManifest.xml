@@ -17,10 +17,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:theme="@style/Theme.TransparentActivity"
-            android:excludeFromRecents="true"
-            android:noHistory="true">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -31,7 +28,7 @@
             android:name=".MainService"
             android:enabled="true"
             android:exported="true"
-            android.permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:foregroundServiceType="specialUse">
 
             <intent-filter>
