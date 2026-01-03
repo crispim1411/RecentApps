@@ -33,14 +33,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,7 +49,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -95,17 +92,9 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun SettingsScreen() {
         val context = LocalContext.current
-
         var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
         var hasAccessibilityPermission by remember {
             mutableStateOf(isAccessibilityServiceEnabled(context, MainService::class.java))
-        }
-        var clickDelay by remember {
-            mutableFloatStateOf(
-                context.getSharedPreferences(Constants.PREFS_NAME, MODE_PRIVATE)
-                    .getInt(Constants.KEY_CLICK_DELAY, Constants.DEFAULT_CLICK_DELAY)
-                    .toFloat()
-            )
         }
 
         DisposableEffect(context as LifecycleOwner) {
@@ -201,66 +190,25 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            if (allPermissionsGranted) {
-                InfoCard(title = "Settings") {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Service Status",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = if (hasAccessibilityPermission) "Service is ready! On external screen double press volume up to open recent apps" else "Service needs permission",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-
-                        SettingDivider()
-
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    "Double-Press Delay",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    "${clickDelay.toInt()} ms",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Slider(
-                                value = clickDelay,
-                                onValueChange = { clickDelay = it },
-                                valueRange = 200f..400f,
-                                steps = 3,
-                                onValueChangeFinished = {
-                                    context.getSharedPreferences(
-                                        Constants.PREFS_NAME,
-                                        MODE_PRIVATE
-                                    )
-                                        .edit {
-                                            putInt(
-                                                Constants.KEY_CLICK_DELAY,
-                                                clickDelay.toInt()
-                                            )
-                                        }
-                                }
+            InfoCard(title = "Settings") {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Service Status",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (hasAccessibilityPermission) "Service is ready. Hold the home button to use" else "Service needs permission",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
                             )
                         }
                     }
@@ -297,13 +245,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-
-    @Composable
-    fun SettingDivider(){
-        Spacer (modifier = Modifier.height(12.dp))
-        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.LightGray.copy(alpha = 0.3f)))
-        Spacer(modifier = Modifier.height(12.dp))
     }
 
     @Composable
