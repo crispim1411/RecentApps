@@ -2,11 +2,16 @@ package com.crispim.recentapps
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.hardware.display.DisplayManager
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 
@@ -14,81 +19,149 @@ import android.view.accessibility.AccessibilityEvent
 class MainService : AccessibilityService() {
 
     private val SCAN_CODE_VOLUME_UP = 114
-    private var pendingVolumeUpRunnable: Runnable? = null
+    private val SCAN_CODE_VOLUME_DOWN = 115
+
+    private var pendingUp: Runnable? = null
+    private var pendingDown: Runnable? = null
+
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
-        val mainDisplay = displayManager.getDisplay(0)
+        val displayManager = getSystemService(DisplayManager::class.java)
+        val mainDisplay = displayManager?.getDisplay(0)
+
+        // Only work when phone is closed (cover screen)
         if (mainDisplay?.state == android.view.Display.STATE_ON) {
             return super.onKeyEvent(event)
         }
 
-        val action = event.action
+        val delay = getSharedPreferences("RecentAppsPrefs", MODE_PRIVATE)
+            .getInt("CLICK_DELAY_MS", 300)
+            .toLong()
 
-        if (event.scanCode == SCAN_CODE_VOLUME_UP && action == KeyEvent.ACTION_UP) {
+        /* ---------------- VOLUME UP ---------------- */
+        if (event.scanCode == SCAN_CODE_VOLUME_UP && event.action == KeyEvent.ACTION_DOWN) {
+            if (pendingUp != null) {
+                handler.removeCallbacks(pendingUp!!)
+                pendingUp = null
+                vibrate()
+                openRecentApps()
+            } else {
+                pendingUp = Runnable {
+                    adjustVolume(AudioManager.ADJUST_RAISE)
+                    pendingUp = null
+                }
+                handler.postDelayed(pendingUp!!, delay)
+            }
             return true
         }
 
-        if (event.scanCode == SCAN_CODE_VOLUME_UP && action == KeyEvent.ACTION_DOWN) {
-            if (pendingVolumeUpRunnable != null) {
-                handler.removeCallbacks(pendingVolumeUpRunnable!!)
-                pendingVolumeUpRunnable = null
-                openRecentApps()
-                return true
-            }
-            else {
-                pendingVolumeUpRunnable = Runnable {
-                    adjustVolume()
-                    pendingVolumeUpRunnable = null
+        /* ---------------- VOLUME DOWN ---------------- */
+        if (event.scanCode == SCAN_CODE_VOLUME_DOWN && event.action == KeyEvent.ACTION_DOWN) {
+            if (pendingDown != null) {
+                handler.removeCallbacks(pendingDown!!)
+                pendingDown = null
+                vibrate()
+                toggleCoverSpin()
+            } else {
+                pendingDown = Runnable {
+                    adjustVolume(AudioManager.ADJUST_LOWER)
+                    pendingDown = null
                 }
-                val prefs = getSharedPreferences("RecentAppsPrefs", Context.MODE_PRIVATE)
-                val clickDelay = prefs.getInt("CLICK_DELAY_MS", 300).toLong()
-                handler.postDelayed(pendingVolumeUpRunnable!!, clickDelay)
-                return true
+                handler.postDelayed(pendingDown!!, delay)
             }
+            return true
         }
 
         return super.onKeyEvent(event)
     }
 
-    private fun adjustVolume() {
-        try {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            audioManager.adjustStreamVolume(
+    /* ---------------- HELPERS ---------------- */
+
+    private fun vibrate() {
+        getSystemService(Vibrator::class.java)?.let {
+            if (it.hasVibrator()) {
+                it.vibrate(
+                    VibrationEffect.createOneShot(
+                        30,
+                        VibrationEffect.DEFAULT_AMPLITUDE
+                    )
+                )
+            }
+        }
+    }
+
+    private fun adjustVolume(direction: Int) {
+        getSystemService(AudioManager::class.java)
+            ?.adjustStreamVolume(
                 AudioManager.STREAM_MUSIC,
-                AudioManager.ADJUST_RAISE,
-                AudioManager.FLAG_SHOW_UI // Mostra a barra de volume na tela
+                direction,
+                AudioManager.FLAG_SHOW_UI
             )
+    }
+
+    /* ---------------- TOGGLE LOGIC ---------------- */
+
+    private fun isCoverSpinOpen(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        return root.packageName?.toString() == "com.crispim.coverspin"
+    }
+
+    private fun toggleCoverSpin() {
+        try {
+            if (isCoverSpinOpen()) {
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            } else {
+                val intent = Intent().apply {
+                    component = ComponentName(
+                        "com.crispim.coverspin",
+                        "com.crispim.coverspin.MainActivity"
+                    )
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            openCoverHome()
+        }
+    }
+
+    /* ---------------- ACTIONS ---------------- */
+
+    private fun openRecentApps() {
+        try {
+            val intent = Intent().apply {
+                component = ComponentName(
+                    "com.sec.android.app.launcher",
+                    "com.android.quickstep.RecentsActivity"
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            val options = ActivityOptions.makeBasic()
+            val coverDisplay = getSystemService(DisplayManager::class.java)
+                ?.getDisplay(1)
+
+            if (coverDisplay != null) {
+                options.launchDisplayId = coverDisplay.displayId
+                startActivity(intent, options.toBundle())
+            } else {
+                startActivity(intent)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    private fun openRecentApps() {
-        try {
-            val samsungIntent = Intent()
-            samsungIntent.component = android.content.ComponentName(
-                "com.sec.android.app.launcher",
-                "com.android.quickstep.RecentsActivity"
-            )
-            samsungIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            samsungIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED) // Tenta forçar reinício
-
-            val options = android.app.ActivityOptions.makeBasic()
-            val displayManager = getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
-            val targetDisplay = displayManager.getDisplay(1)
-
-            if (targetDisplay != null) {
-                options.launchDisplayId = targetDisplay.displayId
-                startActivity(samsungIntent, options.toBundle())
-                return
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+    private fun openCoverHome() {
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        startActivity(intent)
     }
 }
