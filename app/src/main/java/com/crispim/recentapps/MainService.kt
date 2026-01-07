@@ -2,8 +2,9 @@ package com.crispim.recentapps
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.app.ActivityOptions
+import android.content.ComponentName
+import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -48,22 +49,25 @@ class MainService : AccessibilityService() {
 
     private fun openRecentApps() {
         try {
-            val recentAppsIntent = Intent()
-            recentAppsIntent.component = android.content.ComponentName(
-                Constants.SAMSUNG_LAUNCHER_PACKAGE,
-                Constants.RECENTS_ACTIVITY_CLASS
-            )
-            recentAppsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val intent = Intent().apply {
+                component = ComponentName(
+                    "com.sec.android.app.launcher",
+                    "com.android.quickstep.RecentsActivity"
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            }
 
             val options = ActivityOptions.makeBasic()
             val coverDisplay = displayManager.getDisplay(1)
 
             if (coverDisplay != null) {
                 options.launchDisplayId = coverDisplay.displayId
-                startActivity(recentAppsIntent, options.toBundle())
+                startActivity(intent, options.toBundle())
+            } else {
+                startActivity(intent)
             }
         } catch (e: Exception) {
-            showToast(this, "onKeyEvent Error: ${e.message}")
+            e.printStackTrace()
         }
     }
 }

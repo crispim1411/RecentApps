@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -85,14 +86,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } catch (e: Exception) {
-            showToast(this, "onKeyEvent Error: ${e.message}")
+            Toast.makeText(
+                this,
+                "onCreate Error: ${e.message}",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
     @Composable
     fun SettingsScreen() {
         val context = LocalContext.current
-        var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
         var hasAccessibilityPermission by remember {
             mutableStateOf(isAccessibilityServiceEnabled(context, MainService::class.java))
         }
@@ -100,7 +104,6 @@ class MainActivity : ComponentActivity() {
         DisposableEffect(context as LifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
-                    hasOverlayPermission = Settings.canDrawOverlays(context)
                     hasAccessibilityPermission =
                         isAccessibilityServiceEnabled(context, MainService::class.java)
                 }
@@ -149,11 +152,10 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            val allPermissionsGranted = hasOverlayPermission && hasAccessibilityPermission
-            if (!allPermissionsGranted) {
+            if (!hasAccessibilityPermission) {
                 WarningCard(
                     title = "Warning",
-                    message = "For the app to function correctly, please grant the required permissions."
+                    message = "For the app to function correctly, please grant the required permission."
                 )
             }
 
@@ -163,30 +165,15 @@ class MainActivity : ComponentActivity() {
                 message = "Do not add this app to GoodLock. Doing so will prevent the service from working correctly."
             )
 
-            if (!hasOverlayPermission || !hasAccessibilityPermission) {
-                InfoCard(title = "Required Permissions") {
-                    if (!hasOverlayPermission) {
-                        ConfigButton(
-                            text = "Grant Overlay Permission",
-                            onClick = {
-                                val intent = Intent(
-                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    "package:${context.packageName}".toUri()
-                                )
-                                context.startActivity(intent)
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    if (!hasAccessibilityPermission) {
-                        ConfigButton(
-                            text = "Enable Accessibility Service",
-                            onClick = {
-                                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
+            if (!hasAccessibilityPermission) {
+                InfoCard(title = "Required Permission") {
+                    ConfigButton(
+                        text = "Enable Accessibility Service",
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            context.startActivity(intent)
+                        }
+                    )
                 }
             }
 

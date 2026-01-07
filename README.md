@@ -1,11 +1,12 @@
 # RecentApps
 
-RecentApps is a simple Android utility that allows you to quickly access your recent applications by long-pressing the Home button.
+A simple Android utility that allows you to quickly access your recent applications by long-pressing the Home button.
 
 ## Features
 
 *   **Home Button Shortcut**: Simply long-press the Home button in your navigation bar to open the recent apps screen.
-*   **Lightweight**: The app runs a minimal service in the background.
+*   **Lightweight**: The app runs a minimal service in the background, consuming no resources until a gesture is performed.
+*   **Privacy-Focused**: The app collects no personal data. All processing is done on your device.
 
 ## Setup
 
