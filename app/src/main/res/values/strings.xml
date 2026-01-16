@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">RecentApps</string>
-    <string name="fgs_rotation_reason">Overlay para controle de rotação em telas dobráveis</string>
-    <string name="accessibility_service_description">O CoverSpin precisa deste serviço para manter a rotação ativa e executar gestos na tela de capa.</string>
+    <string name="accessibility_service_description">RecentApps uses this service to detect user commands and quickly switch between recently opened applications.</string>
 </resources>
