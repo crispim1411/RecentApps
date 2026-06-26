@@ -54,7 +54,9 @@ class MainService : AccessibilityService() {
                     "com.sec.android.app.launcher",
                     "com.android.quickstep.RecentsActivity"
                 )
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                        Intent.FLAG_ACTIVITY_NO_HISTORY)
             }
 
             val options = ActivityOptions.makeBasic()
