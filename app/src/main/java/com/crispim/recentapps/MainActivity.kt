@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = if (hasAccessibilityPermission) "Service is active. Long-press the Home button to open Recent Apps. (Note: Gesture navigation is not supported yet)" else "Service needs permission",
+                                text = if (hasAccessibilityPermission) "Service is active.\nButton navigation: long-press Home.\nGesture navigation: swipe up and hold on the bottom bar." else "Service needs permission",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray
                             )
