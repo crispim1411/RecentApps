@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.crispim.recentapps"
-        minSdk = 36
+        minSdk = 30
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
