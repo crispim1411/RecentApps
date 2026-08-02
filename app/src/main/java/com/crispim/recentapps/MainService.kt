@@ -1,11 +1,14 @@
 package com.crispim.recentapps
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GestureResultCallback
+import android.accessibilityservice.GestureDescription
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Intent
 import android.database.ContentObserver
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.os.Handler
@@ -88,7 +91,12 @@ class MainService : AccessibilityService() {
 
         val handler = Handler(Looper.getMainLooper())
         val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        var longPressTriggered = false
+        var startX = 0f
+        var startY = 0f
+
         val longPressRunnable = Runnable {
+            longPressTriggered = true
             vibrate()
             openRecentApps()
         }
@@ -97,17 +105,26 @@ class MainService : AccessibilityService() {
         view.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    startX = event.rawX
+                    startY = event.rawY
+                    longPressTriggered = false
                     handler.postDelayed(longPressRunnable, longPressTimeout)
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> true
 
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
                     handler.removeCallbacks(longPressRunnable)
+                    if (!longPressTriggered)
+                        replayTap(startX, startY, handler, coverDisplay.displayId, wm, view, params)
                     true
                 }
 
+                MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longPressRunnable)
+                    true
+                }
                 else -> false
             }
         }
@@ -116,6 +133,42 @@ class MainService : AccessibilityService() {
 
         overlayView = view
         windowManager = wm
+    }
+
+    private fun replayTap(
+        x: Float,
+        y: Float,
+        handler: Handler,
+        displayId: Int,
+        wm: WindowManager,
+        view: View,
+        params: WindowManager.LayoutParams
+    ) {
+        params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        wm.updateViewLayout(view, params)
+
+        val path = Path().apply { moveTo(x, y) }
+        val stroke = GestureDescription.StrokeDescription(path, 0, 100)
+        val gesture = GestureDescription.Builder()
+            .addStroke(stroke)
+            .setDisplayId(displayId)
+            .build()
+
+        fun restoreTouchable() {
+            params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            wm.updateViewLayout(view, params)
+        }
+
+        val dispatched = dispatchGesture(gesture, object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+                restoreTouchable()
+            }
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                restoreTouchable()
+            }
+        }, handler)
+
+        if (!dispatched) restoreTouchable()
     }
 
     private fun removeGestureOverlay() {

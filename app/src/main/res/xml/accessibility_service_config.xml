@@ -6,5 +6,6 @@
     android:notificationTimeout="100"
     android:canRetrieveWindowContent="true"
     android:canRequestFilterKeyEvents="false"
+    android:canPerformGestures="true"
     android:settingsActivity=".MainActivity"
     android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews" />
