@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.ScreenRotation
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -36,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -97,6 +99,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun SettingsScreen() {
         val context = LocalContext.current
+        var showDisclosureDialog by remember { mutableStateOf(false) }
         var hasAccessibilityPermission by remember {
             mutableStateOf(isAccessibilityServiceEnabled(context, MainService::class.java))
         }
@@ -112,6 +115,17 @@ class MainActivity : ComponentActivity() {
             onDispose {
                 context.lifecycle.removeObserver(observer)
             }
+        }
+
+        if (showDisclosureDialog) {
+            AccessibilityDisclosureDialog(
+                onConfirm = {
+                    showDisclosureDialog = false
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    context.startActivity(intent)
+                },
+                onDismiss = { showDisclosureDialog = false }
+            )
         }
 
         Column(
@@ -170,8 +184,7 @@ class MainActivity : ComponentActivity() {
                     ConfigButton(
                         text = "Enable Accessibility Service",
                         onClick = {
-                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            context.startActivity(intent)
+                            showDisclosureDialog = true
                         }
                     )
                 }
@@ -193,7 +206,7 @@ class MainActivity : ComponentActivity() {
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = if (hasAccessibilityPermission) "Service is ready. Hold the home button to use" else "Service needs permission",
+                                text = if (hasAccessibilityPermission) "Service is active. Long-press the Home button to open Recent Apps. (Note: Gesture navigation is not supported yet)" else "Service needs permission",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray
                             )
@@ -216,19 +229,20 @@ class MainActivity : ComponentActivity() {
                 Text(text = "Buy me an Ice Cream ($1)")
             }
 
-            OutlinedButton(
-                onClick = {
-                    val url = "https://github.com/crispim1411/RecentApps/issues"
-                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                    context.startActivity(intent)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Text(text = "A Bug? Report it!")
+            val version = remember {
+                try {
+                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                } catch (_: Exception) {
+                    "1.0.0"
+                }
             }
+
+            Text(
+                text = "Version $version",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -299,6 +313,37 @@ class MainActivity : ComponentActivity() {
         ) {
             Text(text)
         }
+    }
+
+    @Composable
+    fun AccessibilityDisclosureDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "Accessibility API Usage",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "This app requires the Accessibility Service API to provide its core functionality: Long-press the Home button to open Recent Apps.\n\n" +
+                            "• We DO NOT collect, store, or share any personal or sensitive data from your screen.\n" +
+                            "• You can disable this permission at any time in the system settings."
+                )
+            },
+            confirmButton = {
+                Button(onClick = onConfirm) {
+                    Text("Accept and Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Decline")
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
     }
 
     private fun isAccessibilityServiceEnabled(context: Context, service: Class<*>): Boolean {
