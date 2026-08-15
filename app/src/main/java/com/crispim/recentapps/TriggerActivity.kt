@@ -25,11 +25,16 @@ class TriggerActivity : Activity() {
                     "com.sec.android.app.launcher",
                     "com.android.quickstep.RecentsActivity"
                 )
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                            Intent.FLAG_ACTIVITY_NO_HISTORY
+                )
             }
 
             val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
             val options = ActivityOptions.makeBasic()
+            
             val coverDisplay = displayManager.getDisplay(1)
 
             if (coverDisplay != null) {
