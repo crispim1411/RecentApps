@@ -35,6 +35,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -99,6 +103,14 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun SettingsScreen() {
         val context = LocalContext.current
+        val prefs = remember { context.getSharedPreferences("settings", MODE_PRIVATE) }
+        
+        val models = listOf("flip5", "flip7")
+        val modelLabels = listOf("Flip 5/6", "Flip 7/8")
+        var selectedModel by remember {
+            mutableStateOf(prefs.getString("device_model", "flip7") ?: "flip7")
+        }
+
         var showDisclosureDialog by remember { mutableStateOf(false) }
         var hasAccessibilityPermission by remember {
             mutableStateOf(isAccessibilityServiceEnabled(context, MainService::class.java))
@@ -188,28 +200,46 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
-            }
-
-            InfoCard(title = "Settings") {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Service Status",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = if (hasAccessibilityPermission) "Service is active.\nButton navigation: long-press Home.\nGesture navigation: swipe up and hold on the bottom bar." else "Service needs permission",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
+            } else {
+                // Device Model Selection (Gap Configuration)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "Device Display Optimization",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Adjusts the interface gap to match your device's camera layout. For newer models, it makes the gesture area smaller and aligns it to the left to avoid overlapping with system buttons.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            models.forEachIndexed { index, model ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = models.size
+                                    ),
+                                    onClick = {
+                                        selectedModel = model
+                                        prefs.edit { putString("device_model", model) }
+                                    },
+                                    selected = selectedModel == model
+                                ) {
+                                    Text(modelLabels[index])
+                                }
+                            }
                         }
                     }
                 }

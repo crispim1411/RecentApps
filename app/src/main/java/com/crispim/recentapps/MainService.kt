@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.SharedPreferences
 import android.database.ContentObserver
 import android.graphics.Path
 import android.graphics.PixelFormat
@@ -26,10 +27,25 @@ class MainService : AccessibilityService() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var navigationModeObserver: ContentObserver? = null
+    private lateinit var prefs: SharedPreferences
+
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "device_model") {
+            updateOverlayForCurrentNavigationMode()
+        }
+    }
+
+    private companion object {
+        const val COVER_SCREEN_WIDTH_PX = 948
+        const val COVER_SCREEN_WIDTH_CM = 7f
+        const val BAR_WIDTH_CM = 3f
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         displayManager = getSystemService(DISPLAY_SERVICE) as DisplayManager
+        prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         updateOverlayForCurrentNavigationMode()
         registerNavigationModeObserver()
@@ -44,9 +60,10 @@ class MainService : AccessibilityService() {
     }
 
     private fun updateOverlayForCurrentNavigationMode() {
+        removeGestureOverlay()
         if (isGestureNavigationEnabled()) {
-            if (overlayView == null) addGestureOverlay()
-        } else removeGestureOverlay()
+            addGestureOverlay()
+        }
     }
 
     private fun registerNavigationModeObserver() {
@@ -61,32 +78,54 @@ class MainService : AccessibilityService() {
     }
 
     @Suppress("SameParameterValue")
-    private fun dpToPx(dp: Int): Int {
-        val density = resources.displayMetrics.density
+    private fun dpToPx(dp: Int, density: Float): Int {
         return (dp * density).toInt()
     }
 
     private fun addGestureOverlay() {
         val coverDisplay = displayManager.getDisplay(1) ?: return
-
         val displayContext = createDisplayContext(coverDisplay)
         val wm = displayContext.getSystemService(WINDOW_SERVICE) as WindowManager
+        
+        val density = displayContext.resources.displayMetrics.density
+        val model = prefs.getString("device_model", "flip7") ?: "flip7"
 
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            dpToPx(26),
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.BOTTOM
-            layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        val params = if (model == "flip7") {
+            val pxPerCm = COVER_SCREEN_WIDTH_PX / COVER_SCREEN_WIDTH_CM
+            val barWidthPx = (BAR_WIDTH_CM * pxPerCm).toInt()
+            
+            WindowManager.LayoutParams(
+                barWidthPx,
+                dpToPx(40, density),
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.LEFT
+                x = 0
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            }
+        } else {
+            WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                dpToPx(26, density),
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.BOTTOM
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            }
         }
 
         val handler = Handler(Looper.getMainLooper())
+        val view = View(displayContext)
+        
+        // Default: Long Press
         val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
         var longPressTriggered = false
         var startX = 0f
@@ -98,7 +137,6 @@ class MainService : AccessibilityService() {
             startTriggerActivity()
         }
 
-        val view = View(displayContext)
         view.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -126,10 +164,13 @@ class MainService : AccessibilityService() {
             }
         }
 
-        wm.addView(view, params)
-
-        overlayView = view
-        windowManager = wm
+        try {
+            wm.addView(view, params)
+            overlayView = view
+            windowManager = wm
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun replayTap(
@@ -141,8 +182,13 @@ class MainService : AccessibilityService() {
         view: View,
         params: WindowManager.LayoutParams
     ) {
+        val originalFlags = params.flags
         params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        wm.updateViewLayout(view, params)
+        try {
+            wm.updateViewLayout(view, params)
+        } catch (e: Exception) {
+            return
+        }
 
         val path = Path().apply { moveTo(x, y) }
         val stroke = GestureDescription.StrokeDescription(path, 0, 100)
@@ -152,8 +198,12 @@ class MainService : AccessibilityService() {
             .build()
 
         fun restoreTouchable() {
-            params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-            wm.updateViewLayout(view, params)
+            params.flags = originalFlags
+            try {
+                wm.updateViewLayout(view, params)
+            } catch (e: Exception) {
+                // View might have been removed
+            }
         }
 
         val dispatched = dispatchGesture(gesture, object : GestureResultCallback() {
@@ -172,8 +222,8 @@ class MainService : AccessibilityService() {
         overlayView?.let { v ->
             try {
                 windowManager?.removeView(v)
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
+                // Ignore
             }
         }
 
@@ -198,6 +248,7 @@ class MainService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         removeGestureOverlay()
         navigationModeObserver?.let {
             contentResolver.unregisterContentObserver(it)
