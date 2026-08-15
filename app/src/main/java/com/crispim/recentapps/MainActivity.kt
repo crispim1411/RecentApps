@@ -229,19 +229,20 @@ class MainActivity : ComponentActivity() {
                 Text(text = "Buy me an Ice Cream ($1)")
             }
 
-            OutlinedButton(
-                onClick = {
-                    val url = "https://github.com/crispim1411/RecentApps/issues"
-                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                    context.startActivity(intent)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Text(text = "A Bug? Report it!")
+            val version = remember {
+                try {
+                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                } catch (_: Exception) {
+                    "1.0.0"
+                }
             }
+
+            Text(
+                text = "Version $version",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
         }

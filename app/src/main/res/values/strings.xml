@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">RecentApps</string>
     <string name="accessibility_service_description">RecentApps uses this service to detect user commands and quickly switch between recently opened applications.</string>
+    <string name="shortcut_recent_apps">Show recent apps</string>
 </resources>

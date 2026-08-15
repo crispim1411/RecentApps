@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="recent_apps"
+        android:enabled="true"
+        android:icon="@mipmap/recent_apps"
+        android:shortcutShortLabel="@string/shortcut_recent_apps"
+        android:shortcutLongLabel="@string/shortcut_recent_apps">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.crispim.recentapps"
+            android:targetClass="com.crispim.recentapps.TriggerActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>
